@@ -106,11 +106,22 @@ module Pickle
     # factory-girl adapter
     class FactoryGirl < Adapter
       def self.factories
-        (::Factory.factories.values rescue []).map {|factory| new(factory)}
+        begin
+          # Try to use the new Factory Girl API
+          [].tap do |collection|
+            ::FactoryGirl.registry.each do |factory|
+              collection << new(factory[1])
+            end
+          end
+        rescue
+          # Fall back to Factory Girl 1.x
+          (::Factory.factories.values rescue []).map {|factory| new(factory)}
+        end
       end
 
       def initialize(factory)
-        @klass, @name = factory.build_class, factory.factory_name.to_s
+        name = factory.respond_to?(:name) ? factory.name : factory.factory_name
+        @klass, @name = factory.build_class, name.to_s
       end
 
       def create(attrs = {})
